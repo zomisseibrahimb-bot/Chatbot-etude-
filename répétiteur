@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Le Répétiteur</title>
+<style>
+  :root{
+    --board-deep: #16261F;
+    --board-mid: #1F332B;
+    --board-line: #33493E;
+    --chalk: #EDEAE0;
+    --chalk-soft: #9FB0A8;
+    --highlighter: #E8C468;
+    --review-red: #C1594A;
+    --mastered: #7FA98A;
+    --card-paper: #F3EEDF;
+    --card-ink: #23291F;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at 50% -10%, var(--board-mid) 0%, var(--board-deep) 70%);
+    color:var(--chalk);
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  body{
+    display:flex; flex-direction:column;
+    height:100vh; height:100dvh;
+    overflow:hidden;
+  }
+  header{
+    flex-shrink:0;
+    padding: 18px 20px 12px;
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    border-bottom: 1px dashed var(--board-line);
+  }
+  .title-block{ display:flex; flex-direction:column; gap:2px; }
+  .eyebrow{
+    font-family: 'Courier New', monospace;
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color: var(--highlighter);
+  }
+  h1{
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-weight:600;
+    font-size: clamp(19px, 4.5vw, 24px);
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  #deckToggle{
+    font-family: 'Courier New', monospace;
+    font-size:11.5px;
+    background: var(--board-line);
+    color: var(--chalk);
+    border:none;
+    border-radius: 8px;
+    padding: 7px 11px;
+    cursor:pointer;
+    display:none;
+    white-space:nowrap;
+  }
+  @media (max-width: 860px){
+    #deckToggle{ display:inline-block; }
+  }
+  #layout{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+  #chatCol{
+    flex:1;
+    display:flex; flex-direction:column;
+    min-width:0;
+  }
+  #messages{
+    flex:1;
+    overflow-y:auto;
+    padding: 18px 20px 8px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .msg{ max-width: 78%; display:flex; flex-direction:column; gap:4px; }
+  .msg.user{ align-self:flex-end; align-items:flex-end; }
+  .msg.assistant{ align-self:flex-start; align-items:flex-start; }
+  .bubble{
+    padding: 11px 14px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height:1.55;
+    white-space:pre-wrap;
+  }
+  .msg.user .bubble{
+    background: var(--highlighter);
+    color: var(--board-deep);
+    border-bottom-right-radius: 3px;
+  }
+  .msg.assistant .bubble{
+    background: var(--board-mid);
+    border: 1px solid var(--board-line);
+    border-bottom-left-radius: 3px;
+  }
+  .msg-label{
+    font-family: 'Courier New', monospace;
+    font-size: 9.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color: var(--chalk-soft);
+    padding: 0 4px;
+  }
+  .typing{
+    align-self:flex-start;
+    display:flex; gap:4px;
+    padding: 12px 14px;
+    background: var(--board-mid);
+    border: 1px solid var(--board-line);
+    border-radius: 14px;
+    border-bottom-left-radius:3px;
+  }
+  .typing span{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--chalk-soft);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2){ animation-delay:0.15s; }
+  .typing span:nth-child(3){ animation-delay:0.3s; }
+  @keyframes bounce{
+    0%, 60%, 100%{ transform: translateY(0); opacity:0.5; }
+    30%{ transform: translateY(-4px); opacity:1; }
+  }
+  .empty-state{
+    margin:auto;
+    text-align:center;
+    color: var(--chalk-soft);
+    font-size: 14px;
+    line-height:1.7;
+    max-width: 320px;
+    padding: 20px;
+  }
+  .empty-state strong{ color: var(--chalk); font-weight:600; }
+  #quickActions{
+    display:flex; gap:8px; flex-wrap:wrap;
+    padding: 6px 20px 10px;
+    flex-shrink:0;
+  }
+  .chip{
+    font-family: 'Courier New', monospace;
+    font-size: 11.5px;
+    background: transparent;
+    border: 1px solid var(--board-line);
+    color: var(--chalk-soft);
+    border-radius: 20px;
+    padding: 6px 12px;
+    cursor:pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .chip:hover{ border-color: var(--highlighter); color: var(--highlighter); }
+  #inputBar{
+    flex-shrink:0;
+    display:flex; gap:8px;
+    padding: 10px 20px calc(14px + env(safe-area-inset-bottom));
+  }
+  #inputBar input{
+    flex:1;
+    background: var(--board-mid);
+    border: 1px solid var(--board-line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--chalk);
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14.5px;
+    outline:none;
+  }
+  #inputBar input:focus{ border-color: var(--highlighter); }
+  #inputBar input::placeholder{ color: var(--chalk-soft); }
+  #inputBar button{
+    background: var(--highlighter);
+    color: var(--board-deep);
+    border:none;
+    border-radius: 12px;
+    padding: 0 18px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  #inputBar button:disabled{ opacity:0.5; cursor:default; }
+  #deckCol{
+    width: 300px;
+    flex-shrink:0;
+    border-left: 1px dashed var(--board-line);
+    display:flex; flex-direction:column;
+    min-height:0;
+  }
+  #deckHeader{
+    padding: 14px 16px 10px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+  }
+  #deckHeader h2{
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size:14px;
+    font-weight:600;
+    margin:0;
+  }
+  #genBtn{
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    background: var(--board-line);
+    color: var(--chalk);
+    border:none;
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor:pointer;
+  }
+  #genBtn:disabled{ opacity:0.5; cursor:default; }
+  #deckList{
+    flex:1;
+    overflow-y:auto;
+    padding: 4px 16px 16px;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .deck-empty{
+    color: var(--chalk-soft);
+    font-size: 12.5px;
+    line-height:1.6;
+    padding: 8px 2px;
+  }
+  .flashcard{
+    background: var(--card-paper);
+    color: var(--card-ink);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 13px;
+    line-height:1.5;
+    cursor:pointer;
+    transform: rotate(var(--r, -0.6deg));
+    box-shadow: 0 6px 14px rgba(0,0,0,0.28);
+    position:relative;
+    min-height: 74px;
+  }
+  .flashcard::before{
+    content:'';
+    position:absolute; top:-5px; left:16px;
+    width:10px; height:10px; border-radius:50%;
+    background: var(--review-red);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .flashcard .tag{
+    font-family: 'Courier New', monospace;
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    opacity:0.55;
+    display:block;
+    margin-bottom:5px;
+  }
+  .flashcard .face-a{ font-weight:600; }
+  .flashcard .face-b{ display:none; margin-top:6px; }
+  .flashcard.flipped .face-a{ display:none; }
+  .flashcard.flipped .face-b{ display:block; }
+  .flashcard.flipped .tag::after{ content:' — réponse'; }
+  #deckOverlay{
+    position:fixed; inset:0;
+    background: rgba(11,16,38,0.7);
+    z-index:20;
+    display:none;
+  }
+  @media (max-width: 860px){
+    #deckCol{
+      position:fixed; top:0; right:0; bottom:0;
+      width: min(320px, 82vw);
+      background: var(--board-deep);
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 21;
+      border-left: 1px solid var(--board-line);
+    }
+    #deckCol.open{ transform: translateX(0); }
+    #deckOverlay.open{ display:block; }
+  }
+  button:focus-visible, input:focus-visible, .chip:focus-visible{
+    outline: 2px solid var(--highlighter);
+    outline-offset:2px;
+  }
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--board-line); border-radius:8px; }
+  @media (prefers-reduced-motion: reduce){
+    .typing span{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <span class="eyebrow">Session de révision</span>
+    <h1>Le Répétiteur</h1>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button id="settingsBtn" title="Configurer la clé API" style="font-family: 'Courier New', monospace; font-size:11.5px; background: var(--board-line); color: var(--chalk); border:none; border-radius:8px; padding:7px 11px; cursor:pointer;">🔑 Clé API</button>
+    <button id="deckToggle">📇 Fiches (<span id="deckCount">0</span>)</button>
+  </div>
+</header>
+
+<div id="settingsOverlay" style="position:fixed; inset:0; background:rgba(11,16,38,0.75); z-index:30; display:none; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--board-mid); border:1px solid var(--board-line); border-radius:14px; padding:20px; max-width:380px; width:100%;">
+    <h2 style="font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; font-size:16px; margin:0 0 8px;">Clé API Anthropic</h2>
+    <p style="font-size:12.5px; color:var(--chalk-soft); line-height:1.6; margin:0 0 12px;">
+      Cette appli tourne hors de Claude.ai : elle a besoin de ta propre clé API pour appeler Claude.
+      Crée-en une sur <span style="font-family: 'Courier New', monospace;">console.anthropic.com</span>.
+      Elle est gardée uniquement dans ton navigateur.
+    </p>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="width:100%; background:var(--board-deep); border:1px solid var(--board-line); border-radius:10px; padding:11px 13px; color:var(--chalk); font-family: 'Courier New', monospace; font-size:13px; outline:none; margin-bottom:12px;">
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button id="settingsCancel" style="background:transparent; border:1px solid var(--board-line); color:var(--chalk-soft); border-radius:10px; padding:9px 14px; font-size:13px; cursor:pointer;">Annuler</button>
+      <button id="settingsSave" style="background:var(--highlighter); border:none; color:var(--board-deep); border-radius:10px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="layout">
+  <div id="chatCol">
+    <div id="messages">
+      <div class="empty-state" id="emptyState">
+        Dis-moi <strong>ce que tu révises</strong> — un chapitre, un exercice, un texte à comprendre.<br><br>
+        Je peux t'expliquer, te faire réciter, ou te préparer des fiches.
+      </div>
+    </div>
+    <div id="quickActions">
+      <button class="chip" data-prompt="Peux-tu m'expliquer ça plus simplement, avec un exemple concret ?">Explique plus simplement</button>
+      <button class="chip" data-prompt="Interroge-moi maintenant sur ce qu'on vient de voir, une question à la fois.">Quizz-moi</button>
+      <button class="chip" data-prompt="Résume les points essentiels à retenir, en quelques lignes.">Résume l'essentiel</button>
+    </div>
+    <div id="inputBar">
+      <input type="text" id="userInput" placeholder="Écris ta question ou colle ton cours…" autocomplete="off">
+      <button id="sendBtn">Envoyer</button>
+    </div>
+  </div>
+
+  <div id="deckCol">
+    <div id="deckHeader">
+      <h2>Fiches mémoire</h2>
+      <button id="genBtn">Générer</button>
+    </div>
+    <div id="deckList">
+      <div class="deck-empty" id="deckEmpty">Discute un peu, puis clique sur <strong>Générer</strong> pour créer des fiches à partir de la conversation.</div>
+    </div>
+  </div>
+</div>
+
+<div id="deckOverlay"></div>
+
